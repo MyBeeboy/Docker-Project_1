@@ -1,0 +1,73 @@
+version: "3.8"
+
+services:
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "8088:80"
+    volumes:
+      - ./php/content:/srv/www/content
+      - ./static:/srv/www/static
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - php
+      - nodejs
+
+  nodejs:
+    image: node:alpine
+    environment: 
+      NODE_ENV: production
+    working_dir: /home/app
+    restart: always
+    volumes:
+      - ./nodejs:/home/app
+    depends_on:
+      - php
+    command: ["node", "index"]
+
+  php:
+    image: php:apache
+    volumes:
+      - ./php:/var/www/html
+    depends_on:
+      - db
+
+  db:
+    container_name: db
+    image: mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: MYSQL_ROOT_PASSWORD
+      MYSQL_DATABASE: MYSQL_DATABASE
+      MYSQL_USER: MYSQL_USER
+      MYSQL_PASSWORD: MYSQL_PASSWORD
+    ports:
+      - "9906:3306"
+    volumes:
+      - ./store/:/var/lib/mysql  
+    
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    ports:
+      - "8002:80"
+    restart: always
+    environment:
+      PMA_HOST: db
+    depends_on:
+      - db
+  redis-server:
+    image: redis
+    restart: always
+    container_name: redis-server
+    command: /bin/bash -c 'redis-server --appendonly yes'
+    sysctls:
+      - net.core.somaxconn=65535
+    ports:
+      - "6380:6379"
+    volumes:
+      - ./redis:/data
+volumes:
+  mysql:
+    driver: local
+  redis:
+    driver: local
